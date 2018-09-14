@@ -4,7 +4,10 @@
 
 // define array length
 #define STR_MAX_LEN 1024
-#define DATETIME_LEN 19
+#define DATETIME_LEN 20 // byte length of "2000-00-00 00:00:00"
+
+// define Data base file name
+#define DB_FILE "./bk.db"
 
 // define return status type
 typedef enum bk_ret bk_ret_t;
@@ -146,7 +149,7 @@ static bk_ret_t user_query(char *filter, int limit, int offset, user_t *users, i
     char **azResult;
 
     int rc;
-    rc = sqlite3_open('./bk.db', &db);
+    rc = sqlite3_open(DB_FILE, &db);
     if (rc) {
         fprintf(stderr, "Can't open database: %s/n", sqlite3_errmsg(db));
         return ERROR;
@@ -189,7 +192,7 @@ static bk_ret_t user_create(user_t user) {
     char **azResult;
 
     int rc;
-    rc = sqlite3_open('./bk.db', &db);
+    rc = sqlite3_open(DB_FILE, &db);
     if (rc) {
         fprintf(stderr, "Can't open database: %s/n", sqlite3_errmsg(db));
         return ERROR;

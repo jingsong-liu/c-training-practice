@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "sqlite/sqlite3.h"
+#include <sqlite3.h>
 #include <stdlib.h>
 
 // define array length
@@ -37,7 +37,7 @@ struct operation_s {
 };
 
 // declare user crud function
-static bk_ret_t user_query(char *filter, int limit, int offset, user_t *users);
+static bk_ret_t user_query(char *filter, int limit, int offset, user_t *users, int *len);
 static bk_ret_t user_create(user_t user);
 static bk_ret_t user_update(user_t user);
 static bk_ret_t user_delete(int user_id);
@@ -81,11 +81,12 @@ int main(int argc, char **argv) {
     if (EXP_GET == argv[1]) {
         user_t user_list[10];
         user_t *p_user_list = user_list;
+        int len = 0;
         char *example_filter = "name=\"bob\", age>20";
-        r = user_query(example_filter, 10, 0, p_user_list);
+        r = user_query(example_filter, 10, 0, p_user_list, &len);
         if (r == OK) {
             int i = 0;
-            for (;i<10; i++) {
+            for (;i<len; i++) {
                 user_t *u = p_user_list + i;
                 if (u == NULL) {
                     break; //reach end
@@ -136,3 +137,84 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
+
+static bk_ret_t user_query(char *filter, int limit, int offset, user_t *users, int *len) {
+    sqlite3 *db = NULL;
+    char *zErrMsg = 0;
+    int nrow = 0, ncolumn = 0;
+    char **azResult;
+
+    int rc;
+    rc = sqlite3_open('./bk.db', &db);
+    if (rc) {
+        fprintf(stderr, "Can't open database: %s/n", sqlite3_errmsg(db));
+        return ERROR;
+    }
+    else {
+        printf('open sqlite 3 db succeed');
+    }
+
+    char sql[STR_MAX_LEN] = {0};
+    sprintf(sql, "SELECT * FROM user_tbl WHERE %s LIMIT %s OFFSET %s", filter, limit, offset);
+    printf(sql);
+
+    rc = sqlite3_get_table( db , sql , &azResult , &nrow , &ncolumn , &zErrMsg );
+
+    if (rc) {
+        fprintf(stderr, "get table failed: %s/n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return ERROR;
+    }
+    else {
+        int i;
+        for(i=0; i<( nrow + 1 ) * ncolumn ; i++ ) {
+            printf( "azResult[%d] = %s/n", i , azResult[i]);
+            // azResult is query result, save it into users
+            user_t *u = users + i;
+            sscanf(azResult[i], "%d %s %s %s %d %d %d",
+            &u->id, &u->name, &u->password, &u->created_date, &u->age, &u->level, &u->amount);
+        }
+        *len = i;
+        sqlite3_close(db);
+        return OK;
+    }
+
+}
+
+static bk_ret_t user_create(user_t user) {
+    sqlite3 *db = NULL;
+    char *zErrMsg = 0;
+    int nrow = 0, ncolumn = 0;
+    char **azResult;
+
+    int rc;
+    rc = sqlite3_open('./bk.db', &db);
+    if (rc) {
+        fprintf(stderr, "Can't open database: %s/n", sqlite3_errmsg(db));
+        return ERROR;
+    }
+    else {
+        printf('open sqlite 3 db succeed');
+    }
+
+    char sql[STR_MAX_LEN] = {0};
+    sprintf(sql, "INSERT INTO user_tbl(name, password, created_date, age, level, amount) VALUES(%s %s %s %d %d %f)",
+            user.name, user.password, user.created_date, user.age, user.level, user.amount);
+    printf(sql);
+
+    rc = sqlite3_exec(db , sql, NULL, NULL, &zErrMsg);
+    if (rc) {
+        fprintf(stderr, "get table failed: %s/n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return ERROR;
+    }
+    else {
+        printf('insert user succeed');
+        return OK;
+    }
+}
+// TODO
+static bk_ret_t user_update(user_t user);
+// TODO
+static bk_ret_t user_delete(int user_id);
